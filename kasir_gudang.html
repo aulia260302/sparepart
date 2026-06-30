@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Kasir Gudang Spare Part - Upgraded</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:#f0efea;color:#1a1a18;font-size:14px;min-height:100vh}
+
+/* HEADER */
+header{background:#1a1a18;color:#f0efea;padding:12px 20px;display:flex;align-items:center;justify-content:space-between}
+header h1{font-size:15px;font-weight:500;letter-spacing:.01em}
+.header-right{display:flex;align-items:center;gap:10px;font-size:12px;color:#888780}
+.clock{font-variant-numeric:tabular-nums;color:#f0efea}
+
+/* NAV TABS */
+.nav{background:#fff;border-bottom:1px solid #dddcd4;display:flex;gap:0;padding:0 20px}
+.nav-tab{padding:10px 18px;font-size:13px;font-weight:500;color:#888780;cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;user-select:none}
+.nav-tab:hover{color:#1a1a18}
+.nav-tab.active{color:#1a1a18;border-bottom-color:#1a1a18}
+
+/* PAGES */
+.page{display:none;height:calc(100vh - 88px)}
+.page.active{display:flex}
+
+/* ── KASIR PAGE ── */
+.app{display:grid;grid-template-columns:1fr 380px;gap:0;width:100%;height:100%}
+
+/* LEFT */
+.left{padding:16px;display:flex;flex-direction:column;gap:12px;overflow-y:auto}
+.left-topbar{display:flex;align-items:center;justify-content:space-between}
+.katalog-label{font-size:11px;color:#888780;font-weight:600;text-transform:uppercase;letter-spacing:.07em}
+.btn-tambah-barang{padding:7px 14px;border-radius:7px;border:1px solid #c8c7c0;background:#fff;font-size:12px;font-weight:500;font-family:inherit;cursor:pointer;display:flex;align-items:center;gap:5px;transition:background .1s}
+.btn-tambah-barang:hover{background:#f0efea}
+
+.search-wrap{position:relative}
+.search-input{width:100%;padding:10px 14px 10px 36px;border:1.5px solid #c8c7c0;border-radius:9px;background:#fff;font-size:14px;font-family:inherit;color:#1a1a18;outline:none;transition:border-color .15s}
+.search-input:focus{border-color:#1a1a18}
+.search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#888780;pointer-events:none;font-size:16px}
+.dropdown{position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1px solid #c8c7c0;border-radius:9px;box-shadow:0 4px 16px rgba(0,0,0,.10);z-index:100;max-height:320px;overflow-y:auto;display:none}
+.dropdown.show{display:block}
+.dd-item{padding:10px 14px;cursor:pointer;border-bottom:.5px solid #eeeee8;display:flex;align-items:center;gap:12px;transition:background .1s}
+.dd-item:last-child{border-bottom:none}
+.dd-item:hover{background:#f0efea}
+.dd-kode{font-size:11px;color:#888780;font-variant-numeric:tabular-nums;min-width:72px}
+.dd-nama{flex:1;font-size:13px;font-weight:500}
+.dd-lok{font-size:11px;color:#5F5E5A;background:#f0efea;padding:2px 7px;border-radius:4px}
+.dd-stok{font-size:11px;color:#0F6E56;min-width:40px;text-align:right}
+
+/* IOT SIMULATOR BOX */
+.iot-simulator{background:#e2f0d9;border:1px solid #b4c6e7;border-radius:8px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;font-size:12px}
+.iot-status{display:flex;align-items:center;gap:8px;font-weight:500;color:#385723}
+.pulse-green{width:8px;height:8px;background:#70ad47;border-radius:50%;box-shadow:0 0 0 0 rgba(112,173,71,0.7);animation:pulse 1.5s infinite}
+@keyframes pulse{0%{transform:scale(0.95);box-shadow:0 0 0 0 rgba(112,173,71,0.7)}70%{transform:scale(1);box-shadow:0 0 0 6px rgba(112,173,71,0)}100%{transform:scale(0.95);box-shadow:0 0 0 0 rgba(112,173,71,0)}}
+.iot-btn{padding:4px 8px;font-size:11px;background:#385723;color:#fff;border:none;border-radius:4px;cursor:pointer}
+.iot-btn:hover{background:#273d18}
+
+.katalog{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px}
+.kart{background:#fff;border:1px solid #dddcd4;border-radius:10px;padding:12px;cursor:pointer;transition:all .15s;user-select:none}
+.kart:hover{border-color:#1a1a18;background:#f8f7f2}
+.kart:active{transform:scale(.97)}
+.kart-kode{font-size:10px;color:#888780;margin-bottom:3px;font-variant-numeric:tabular-nums}
+.kart-nama{font-size:12px;font-weight:500;line-height:1.35;margin-bottom:2px;min-height:32px}
+.kart-alias{font-size:11px;color:#a6a498;font-style:italic;margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kart-bottom{display:flex;align-items:center;justify-content:space-between}
+.kart-lok{font-size:10px;color:#5F5E5A;background:#f0efea;padding:2px 6px;border-radius:4px;font-weight:500}
+.kart-stok{font-size:11px;color:#0F6E56;font-weight:500}
+.stok-low{color:#A32D2D}
+
+/* RIGHT — KERANJANG */
+.right{background:#fff;border-left:1px solid #dddcd4;display:flex;flex-direction:column}
+.right-header{padding:14px 16px;border-bottom:1px solid #eeeee8}
+.right-header h2{font-size:13px;font-weight:600;color:#1a1a18}
+.pemohon-row{display:flex;flex-direction:column;margin-top:10px;gap:8px}
+.pemohon-inputs{display:flex;gap:8px}
+.access-log-info{font-size:11px;color:#385723;background:#e2f0d9;padding:4px 8px;border-radius:5px;display:none}
+.inp{padding:7px 10px;border:1px solid #c8c7c0;border-radius:7px;background:#fafaf8;font-size:13px;font-family:inherit;color:#1a1a18;width:100%}
+.inp:focus{outline:none;border-color:#1a1a18}
+.keranjang{flex:1;overflow-y:auto;padding:10px 16px}
+.keranjang-item{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:.5px solid #eeeee8}
+.ki-info{flex:1;min-width:0}
+.ki-nama{font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ki-lok{font-size:10px;color:#888780;margin-top:1px}
+.ki-qty{display:flex;align-items:center;gap:4px}
+.qty-btn{width:22px;height:22px;border-radius:5px;border:1px solid #c8c7c0;background:#f0efea;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;color:#1a1a18;line-height:1;transition:background .1s}
+.qty-btn:hover{background:#dddcd4}
+.qty-num{font-size:13px;font-weight:500;min-width:22px;text-align:center;font-variant-numeric:tabular-nums}
+.ki-del{color:#A32D2D;background:none;border:none;cursor:pointer;font-size:15px;padding:2px 4px;border-radius:4px;transition:background .1s}
+.ki-del:hover{background:#FCEBEB}
+.empty-cart{text-align:center;padding:40px 20px;color:#B4B2A9;font-size:13px}
+.right-footer{padding:12px 16px;border-top:1px solid #eeeee8}
+.summary{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.summary-label{font-size:12px;color:#888780}
+.summary-val{font-size:15px;font-weight:600}
+.btn-print{width:100%;padding:11px;border-radius:9px;border:none;background:#1a1a18;color:#f0efea;font-size:14px;font-weight:500;font-family:inherit;cursor:pointer;transition:background .15s;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-print:hover{background:#2c2c2a}
+.btn-print:disabled{background:#c8c7c0;cursor:not-allowed}
+.btn-reset{width:100%;padding:8px;border-radius:7px;border:1px solid #c8c7c0;background:transparent;color:#888780;font-size:12px;font-family:inherit;cursor:pointer;margin-top:6px;transition:background .1s}
+.btn-reset:hover{background:#f0efea}
+
+/* ── HISTORY PAGE ── */
+.history-page{flex-direction:column;padding:20px;gap:16px;overflow-y:auto;width:100%}
+.history-topbar{display:flex;align-items:center;justify-content:space-between}
+.history-topbar h2{font-size:15px;font-weight:600}
+.history-filter{display:flex;gap:8px}
+.filter-inp{padding:7px 10px;border:1px solid #c8c7c0;border-radius:7px;background:#fff;font-size:13px;font-family:inherit;color:#1a1a18}
+.filter-inp:focus{outline:none;border-color:#1a1a18}
+.history-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.hstat{background:#fff;border:1px solid #dddcd4;border-radius:10px;padding:14px 16px;text-align:center}
+.hstat-num{font-size:24px;font-weight:600}
+.hstat-lbl{font-size:11px;color:#888780;margin-top:3px}
+.history-list{display:flex;flex-direction:column;gap:8px}
+.h-card{background:#fff;border:1px solid #dddcd4;border-radius:10px;overflow:hidden}
+.h-card-header{padding:12px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;user-select:none;transition:background .1s}
+.h-card-header:hover{background:#fafaf8}
+.h-no{font-size:12px;font-weight:600;color:#1a1a18;min-width:90px}
+.h-pemohon{flex:1}
+.h-nama{font-size:13px;font-weight:500}
+.h-dept{font-size:11px;color:#888780}
+.h-meta{text-align:right}
+.h-tgl{font-size:11px;color:#888780}
+.h-total{font-size:12px;font-weight:500;color:#1a1a18;margin-top:2px}
+.h-chevron{font-size:12px;color:#888780;transition:transform .2s}
+.h-chevron.open{transform:rotate(90deg)}
+.h-detail{display:none;border-top:1px solid #eeeee8;padding:0 16px}
+.h-detail.open{display:block}
+.h-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:.5px solid #eeeee8;font-size:12px}
+.h-row:last-child{border-bottom:none}
+.h-row-kode{color:#888780;min-width:80px}
+.h-row-nama{flex:1;font-weight:500}
+.h-row-qty{color:#0F6E56;font-weight:500;min-width:50px;text-align:right}
+.h-row-lok{background:#f0efea;padding:2px 7px;border-radius:4px;font-size:11px;color:#5F5E5A}
+.btn-reprint{padding:5px 12px;border-radius:6px;border:1px solid #c8c7c0;background:#fafaf8;font-size:11px;font-family:inherit;cursor:pointer;margin:10px 0}
+.btn-reprint:hover{background:#f0efea}
+.empty-history{text-align:center;padding:60px 20px;color:#B4B2A9;font-size:13px}
+
+/* ── TAMBAH BARANG PAGE ── */
+.barang-page{flex-direction:column;padding:20px;gap:16px;overflow-y:auto;width:100%}
+.barang-topbar{display:flex;align-items:center;justify-content:space-between}
+.barang-topbar h2{font-size:15px;font-weight:600}
+.form-card{background:#fff;border:1px solid #dddcd4;border-radius:12px;padding:20px;max-width:560px}
+.form-card h3{font-size:13px;font-weight:600;margin-bottom:16px;color:#1a1a18}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.fg{display:flex;flex-direction:column;gap:5px}
+.fg.full{grid-column:1/-1}
+.fg label{font-size:12px;color:#5F5E5A;font-weight:500}
+.fg input,.fg select{padding:8px 10px;border:1px solid #c8c7c0;border-radius:7px;background:#fafaf8;font-size:13px;font-family:inherit;color:#1a1a18}
+.fg input:focus,.fg select:focus{outline:none;border-color:#1a1a18}
+.fg .hint{font-size:11px;color:#888780;margin-top:2px}
+.btn-simpan{padding:10px 24px;border-radius:8px;border:none;background:#1a1a18;color:#f0efea;font-size:13px;font-weight:500;font-family:inherit;cursor:pointer;transition:background .15s}
+.btn-simpan:hover{background:#2c2c2a}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1a18;color:#f0efea;padding:10px 20px;border-radius:9px;font-size:13px;z-index:999;opacity:0;transition:opacity .25s;pointer-events:none}
+.toast.show{opacity:1}
+
+/* daftar barang */
+.daftar-barang{background:#fff;border:1px solid #dddcd4;border-radius:12px;overflow:hidden;max-width:900px}
+.db-header{padding:12px 16px;display:grid;grid-template-columns:80px 1fr 120px 90px 70px 60px;gap:8px;font-size:11px;font-weight:600;color:#888780;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid #eeeee8}
+.db-row{padding:10px 16px;display:grid;grid-template-columns:80px 1fr 120px 90px 70px 60px;gap:8px;font-size:13px;border-bottom:.5px solid #eeeee8;align-items:center}
+.db-row:last-child{border-bottom:none}
+.db-row:hover{background:#fafaf8}
+.db-kode{font-size:11px;color:#888780}
+.db-lok{font-size:12px;background:#f0efea;padding:2px 7px;border-radius:4px;color:#5F5E5A;text-align:center}
+.db-stok{font-weight:500;color:#0F6E56;text-align:right}
+.db-stok.low{color:#A32D2D}
+.db-del{background:none;border:none;cursor:pointer;color:#A32D2D;font-size:14px;padding:3px 6px;border-radius:4px}
+.db-del:hover{background:#FCEBEB}
+.db-search{padding:10px 16px;border-bottom:1px solid #eeeee8}
+.db-search input{width:100%;max-width:280px;padding:7px 10px;border:1px solid #c8c7c0;border-radius:7px;font-size:13px;font-family:inherit;background:#fafaf8}
+.db-search input:focus{outline:none;border-color:#1a1a18}
+
+/* MODALS */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:200;display:none;align-items:center;justify-content:center}
+.overlay.show{display:flex}
+.modal{background:#fff;border-radius:14px;padding:22px;width:300px;box-shadow:0 8px 32px rgba(0,0,0,.18)}
+.modal h3{font-size:14px;font-weight:600;margin-bottom:4px}
+.modal-sub{font-size:12px;color:#888780;margin-bottom:14px}
+.modal-lok{display:inline-block;font-size:12px;background:#f0efea;color:#5F5E5A;padding:4px 10px;border-radius:6px;font-weight:500;margin-bottom:14px}
+.qty-big{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:16px}
+.qty-big-btn{width:38px;height:38px;border-radius:8px;border:1.5px solid #c8c7c0;background:#f0efea;cursor:pointer;font-size:20px;display:flex;align-items:center;justify-content:center;transition:background .1s}
+.qty-big-btn:hover{background:#dddcd4}
+.qty-big-num{font-size:28px;font-weight:600;min-width:48px;text-align:center;font-variant-numeric:tabular-nums}
+.modal-inp{width:100%;padding:8px 10px;border:1px solid #c8c7c0;border-radius:7px;font-size:13px;font-family:inherit;text-align:center;margin-bottom:14px}
+.modal-inp:focus{outline:none;border-color:#1a1a18}
+.modal-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.mbtn{padding:9px;border-radius:8px;border:1px solid #c8c7c0;background:#f0efea;font-size:13px;font-family:inherit;cursor:pointer}
+.mbtn.primary{background:#1a1a18;color:#f0efea;border-color:#1a1a18}
+.mbtn:hover{opacity:.85}
+
+/* PRINT */
+@media print{
+  body{background:#fff}
+  header,.nav,.page{display:none!important}
+  #struk{display:block!important}
+}
+#struk{display:none;font-family:'Courier New',monospace;font-size:12px;padding:10px;max-width:300px;margin:0 auto}
+#struk .s-center{text-align:center}
+#struk .s-bold{font-weight:700}
+#struk .s-line{border-top:1px dashed #000;margin:6px 0}
+#struk table{width:100%;border-collapse:collapse}
+#struk td{padding:2px 0;vertical-align:top}
+#struk .s-right{text-align:right}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>⚙️ Kasir Gudang Spare Part</h1>
+  <div class="header-right">
+    <span id="tgl"></span>
+    <span class="clock" id="jam"></span>
+  </div>
+</header>
+
+<div class="nav">
+  <div class="nav-tab active" onclick="gotoTab('kasir')">🛒 Kasir</div>
+  <div class="nav-tab" onclick="gotoTab('history')">📋 History</div>
+  <div class="nav-tab" onclick="gotoTab('barang')">📦 Kelola Barang</div>
+</div>
+
+<div class="page active" id="page-kasir">
+<div class="app">
+  <div class="left">
+    <div class="iot-simulator">
+      <div class="iot-status">
+        <div class="pulse-green"></div>
+        <span>Sistem Akses Pintu Gudang Aktif (Listening API...)</span>
+      </div>
+      <button class="iot-btn" onclick="simulasiTapPintu()">⚡ Simulasi Mekanik Tap Pintu</button>
+    </div>
+
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input class="search-input" id="search" placeholder="Cari nama, kode, atau bahasa lapangan (laher, sil, karet)..." autocomplete="off" oninput="cariBarang(this.value)" onblur="setTimeout(()=>tutupDD(),200)"/>
+      <div class="dropdown" id="dropdown"></div>
+    </div>
+    <div class="left-topbar">
+      <div class="katalog-label">Semua Barang (<span id="jml-barang">0</span>)</div>
+      <button class="btn-tambah-barang" onclick="gotoTab('barang')">+ Tambah Barang</button>
+    </div>
+    <div class="katalog" id="katalog"></div>
+  </div>
+
+  <div class="right">
+    <div class="right-header">
+      <h2>Permintaan Barang</h2>
+      <div class="pemohon-row">
+        <div class="access-log-info" id="access-log-info"></div>
+        <div class="pemohon-inputs">
+          <input class="inp" id="inp-pemohon" placeholder="Nama pemohon"/>
+          <input class="inp" id="inp-dept" placeholder="Departemen"/>
+        </div>
+      </div>
+    </div>
+    <div class="keranjang" id="keranjang">
+      <div class="empty-cart">Belum ada barang dipilih.<br>Klik barang di kiri untuk menambahkan.</div>
+    </div>
+    <div class="right-footer">
+      <div class="summary">
+        <span class="summary-label">Total item</span>
+        <span class="summary-val" id="total-item">0 item</span>
+      </div>
+      <button class="btn-print" id="btn-print" onclick="printStruk()" disabled>🖨️ Simpan & Cetak Struk</button>
+      <button class="btn-reset" onclick="resetSemua()">Bersihkan semua</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="page history-page" id="page-history">
+  <div class="history-topbar">
+    <h2>History Pemesanan</h2>
+    <div class="history-filter">
+      <input class="filter-inp" id="filter-cari" placeholder="Cari nama / no transaksi…" oninput="renderHistory()"/>
+      <input class="filter-inp" type="date" id="filter-tgl" oninput="renderHistory()"/>
+      <button class="btn-tambah-barang" onclick="document.getElementById('filter-cari').value='';document.getElementById('filter-tgl').value='';renderHistory()">Reset</button>
+    </div>
+  </div>
+  <div class="history-stats">
+    <div class="hstat"><div class="hstat-num" id="hs-total">0</div><div class="hstat-lbl">Total transaksi</div></div>
+    <div class="hstat"><div class="hstat-num" id="hs-hari">0</div><div class="hstat-lbl">Hari ini</div></div>
+    <div class="hstat"><div class="hstat-num" id="hs-item">0</div><div class="hstat-lbl">Total item keluar</div></div>
+  </div>
+  <div class="history-list" id="history-list">
+    <div class="empty-history">Belum ada transaksi.<br>Mulai kasir untuk merekam history.</div>
+  </div>
+</div>
+
+<div class="page barang-page" id="page-barang">
+  <div class="barang-topbar">
+    <h2>Kelola Barang</h2>
+  </div>
+
+  <div class="form-card">
+    <h3>➕ Tambah Barang Baru</h3>
+    <div class="form-grid">
+      <div class="fg">
+        <label>Kode Barang <span style="color:#A32D2D">*</span></label>
+        <input id="fb-kode" placeholder="Cth: BRG-021"/>
+        <div class="hint">Harus unik, tidak boleh sama</div>
+      </div>
+      <div class="fg">
+        <label>Satuan <span style="color:#A32D2D">*</span></label>
+        <select id="fb-satuan">
+          <option value="pcs">pcs</option>
+          <option value="set">set</option>
+          <option value="m">m (meter)</option>
+          <option value="btg">btg (batang)</option>
+          <option value="roll">roll</option>
+          <option value="pak">pak</option>
+          <option value="ltr">ltr (liter)</option>
+          <option value="kg">kg</option>
+          <option value="box">box</option>
+          <option value="unit">unit</option>
+        </select>
+      </div>
+      <div class="fg full">
+        <label>Nama Barang <span style="color:#A32D2D">*</span></label>
+        <input id="fb-nama" placeholder="Cth: Bearing 2308 H"/>
+      </div>
+      <div class="fg full">
+        <label>Bahasa Lapangan / Alias <span style="color:#888780">(Opsional)</span></label>
+        <input id="fb-alias" placeholder="Cth: laher roda, bering (pisahkan dengan koma)"/>
+        <div class="hint">Kata kunci alternatif agar mekanik/elektrik mudah mencari</div>
+      </div>
+      <div class="fg">
+        <label>Lokasi Rak <span style="color:#A32D2D">*</span></label>
+        <input id="fb-lok" placeholder="Cth: B2-R"/>
+        <div class="hint">Format: [Baris][Urutan]-[L/R]</div>
+      </div>
+      <div class="fg">
+        <label>Stok Awal</label>
+        <input id="fb-stok" type="number" min="0" value="0"/>
+      </div>
+    </div>
+    <button class="btn-simpan" onclick="simpanBarang()">Simpan Barang</button>
+  </div>
+
+  <div class="daftar-barang">
+    <div class="db-search">
+      <input id="db-cari" placeholder="Cari barang…" oninput="renderDaftarBarang()"/>
+    </div>
+    <div class="db-header">
+      <span>Kode</span><span>Nama Barang (Alias)</span><span>Lokasi</span><span>Satuan</span><span style="text-align:right">Stok</span><span></span>
+    </div>
+    <div id="daftar-barang-list"></div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <h3 id="m-nama"></h3>
+    <div class="modal-sub" id="m-kode"></div>
+    <div class="modal-lok" id="m-lok"></div>
+    <div class="qty-big">
+      <button class="qty-big-btn" onclick="ubahQtyModal(-1)">−</button>
+      <div class="qty-big-num" id="m-qty">1</div>
+      <button class="qty-big-btn" onclick="ubahQtyModal(1)">+</button>
+    </div>
+    <input class="modal-inp" type="number" id="m-qty-inp" value="1" min="1" oninput="syncQtyModal(this.value)" placeholder="Masukkan qty"/>
+    <div class="modal-btns">
+      <button class="mbtn" onclick="tutupModal()">Batal</button>
+      <button class="mbtn primary" onclick="konfirmasiModal()">Tambah ke keranjang</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div id="struk"></div>
+
+<script>
+// ── DATABASE (Ditambahkan field 'alias') ──────────────────────────────────
+let DB = [
+  {kode:'BRG-001',nama:'Bearing 2307 H',      alias:'laher, bering', lokasi:'B2-R',stok:24,satuan:'pcs'},
+  {kode:'BRG-002',nama:'Bearing 6205 ZZ',     alias:'laher bak magnet', lokasi:'B2-L',stok:18,satuan:'pcs'},
+  {kode:'BRG-003',nama:'Bearing 6305',         alias:'laher', lokasi:'B3-R',stok:10,satuan:'pcs'},
+  {kode:'OSL-001',nama:'O-Seal 25mm',          alias:'karet sil, siel', lokasi:'C1-L',stok:50,satuan:'pcs'},
+  {kode:'OSL-002',nama:'O-Seal 32mm',          alias:'karet sil pump', lokasi:'C1-R',stok:42,satuan:'pcs'},
+  {kode:'OSL-003',nama:'O-Ring Set',           alias:'karet o ring bok', lokasi:'C2-L',stok:8, satuan:'set'},
+  {kode:'RNG-001',nama:'Ring Piston 50mm',     alias:'seker, seher', lokasi:'C3-R',stok:15,satuan:'pcs'},
+  {kode:'RNG-002',nama:'Ring Piston 60mm',     alias:'seker blower', lokasi:'C3-L',stok:12,satuan:'pcs'},
+  {kode:'SLG-001',nama:'Selang Hidrolik 1/2"', alias:'hose hydraulic', lokasi:'D1-R',stok:30,satuan:'m'},
+  {kode:'SLG-002',nama:'Selang Angin 3/8"',    alias:'selang kompresor', lokasi:'D1-L',stok:25,satuan:'m'},
+  {kode:'PPA-001',nama:'Pipa Besi 1"',         alias:'pipa hitam', lokasi:'D2-R',stok:6, satuan:'btg'},
+  {kode:'PPA-002',nama:'Pipa Galvanis 3/4"',   alias:'pipa air ledeng', lokasi:'D2-L',stok:9, satuan:'btg'},
+  {kode:'VBL-001',nama:'V-Belt A52',           alias:'tali kipas, vanbelt', lokasi:'A1-R',stok:20,satuan:'pcs'},
+  {kode:'VBL-002',nama:'V-Belt B68',           alias:'fanbelt mesin dinamo', lokasi:'A1-L',stok:14,satuan:'pcs'},
+  {kode:'PLU-001',nama:'Pelumas Grease',       alias:'gemuk, stempet', lokasi:'A2-R',stok:12,satuan:'kg'},
+  {kode:'PLU-002',nama:'Oli Mesin 10W-40',     alias:'oli diesel', lokasi:'A2-L',stok:8, satuan:'ltr'},
+  {kode:'BLT-001',nama:'Baut M10x30',          alias:'baut kunci 14', lokasi:'F1-R',stok:200,satuan:'pcs'},
+  {kode:'BLT-002',nama:'Mur M10',              alias:'nut, pasangannya baut', lokasi:'F1-L',stok:180,satuan:'pcs'},
+];
+
+// Data Dummy Log Tap Kartu RFID Pintu Gudang
+const dummyKaryawan = [
+  {nama: 'Ahmad Subarjo', dept: 'Mekanik Produksi'},
+  {nama: 'Budi Elektrik', dept: 'Maintenance Listrik'},
+  {nama: 'Dedi K.', dept: 'Operator Boiler'},
+  {nama: 'Eko Sulistyo', dept: 'Utility & Fasilitas'}
+];
+
+let keranjang = [];
+let history = [];
+let modalBarang = null;
+let modalQty = 1;
+let noTrx = 1;
+let activeTab = 'kasir';
+
+// ── SIMULASI AUTOMATION (RFID TAP PINTU) ──────────────────────────────────
+function simulasiTapPintu() {
+  const randomUser = dummyKaryawan[Math.floor(Math.random() * dummyKaryawan.length)];
+  
+  // Isi otomatis field Pemohon dan Dept
+  document.getElementById('inp-pemohon').value = randomUser.nama;
+  document.getElementById('inp-dept').value = randomUser.dept;
+  
+  // Tampilkan info log deteksi pintu
+  const logInfo = document.getElementById('access-log-info');
+  const now = new Date().toLocaleTimeString('id-ID');
+  logInfo.innerHTML = `🔓 Pintu Terbuka [${now}]: <b>${randomUser.nama} (${randomUser.dept})</b> masuk gudang.`;
+  logInfo.style.display = 'block';
+  
+  showToast(`🔑 Akses Diterima: ${randomUser.nama}`);
+}
+
+// ── TABS ──────────────────────────────────────────────────────────────────
+function gotoTab(tab){
+  document.querySelectorAll('.nav-tab').forEach((t,i)=>{
+    const tabs=['kasir','history','barang'];
+    t.classList.toggle('active', tabs[i]===tab);
+  });
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+tab).classList.add('active');
+  activeTab = tab;
+  if(tab==='history') renderHistory();
+  if(tab==='barang') renderDaftarBarang();
+}
+
+// ── CLOCK ─────────────────────────────────────────────────────────────────
+function updateJam(){
+  const now = new Date();
+  document.getElementById('jam').textContent =
+    now.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  document.getElementById('tgl').textContent =
+    now.toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+}
+updateJam(); setInterval(updateJam,1000);
+
+// ── TOAST ─────────────────────────────────────────────────────────────────
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+// ── KATALOG ──────────────────────────────────────────────────────────────
+function renderKatalog(list){
+  const el=document.getElementById('katalog');
+  document.getElementById('jml-barang').textContent=DB.length;
+  if(!list.length){el.innerHTML='<div style="color:#B4B2A9;font-size:13px;padding:20px 0">Barang tidak ditemukan</div>';return}
+  el.innerHTML=list.map(b=>`
+    <div class="kart" onclick="bukaModal('${b.kode}')">
+      <div class="kart-kode">${b.kode}</div>
+      <div class="kart-nama">${b.nama}</div>
+      <div class="kart-alias" title="${b.alias || ''}">${b.alias ? '🏷️ ' + b.alias : '-'}</div>
+      <div class="kart-bottom">
+        <span class="kart-lok">📍 ${b.lokasi}</span>
+        <span class="kart-stok ${b.stok<=5?'stok-low':''}">${b.stok} ${b.satuan}</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── SEARCH (Mencakup Nama, Kode, dan Alias) ────────────────────────────────
+function cariBarang(q){
+  const dd=document.getElementById('dropdown');
+  if(!q.trim()){dd.classList.remove('show');renderKatalog(DB);return}
+  
+  const queryLower = q.toLowerCase();
+  const hasil=DB.filter(b=>
+    b.nama.toLowerCase().includes(queryLower) ||
+    b.kode.toLowerCase().includes(queryLower) ||
+    (b.alias && b.alias.toLowerCase().includes(queryLower))
+  );
+  
+  renderKatalog(hasil);
+  if(!hasil.length){dd.classList.remove('show');return}
+  dd.innerHTML=hasil.slice(0,8).map(b=>`
+    <div class="dd-item" onmousedown="pilihDD('${b.kode}')">
+      <span class="dd-kode">${b.kode}</span>
+      <span class="dd-nama">${b.nama} ${b.alias ? `<span style="color:#888780; font-weight:normal; font-size:11px;">(${b.alias})</span>` : ''}</span>
+      <span class="dd-lok">📍 ${b.lokasi}</span>
+      <span class="dd-stok">${b.stok} ${b.satuan}</span>
+    </div>
+  `).join('');
+  dd.classList.add('show');
+}
+function pilihDD(kode){
+  bukaModal(kode);
+  document.getElementById('search').value='';
+  document.getElementById('dropdown').classList.remove('show');
+  renderKatalog(DB);
+}
+function tutupDD(){document.getElementById('dropdown').classList.remove('show')}
+
+// ── MODAL QTY ─────────────────────────────────────────────────────────────
+function bukaModal(kode){
+  const b=DB.find(x=>x.kode===kode);
+  if(!b) return;
+  modalBarang=b; modalQty=1;
+  document.getElementById('m-nama').textContent=b.nama;
+  document.getElementById('m-kode').textContent=b.kode+' · Stok: '+b.stok+' '+b.satuan;
+  document.getElementById('m-lok').textContent='📍 Rak '+b.lokasi;
+  document.getElementById('m-qty').textContent=1;
+  document.getElementById('m-qty-inp').value=1;
+  document.getElementById('overlay').classList.add('show');
+  setTimeout(()=>document.getElementById('m-qty-inp').focus(),100);
+}
+function tutupModal(){document.getElementById('overlay').classList.remove('show');modalBarang=null}
+function ubahQtyModal(d){modalQty=Math.max(1,modalQty+d);document.getElementById('m-qty').textContent=modalQty;document.getElementById('m-qty-inp').value=modalQty}
+function syncQtyModal(v){modalQty=Math.max(1,parseInt(v)||1);document.getElementById('m-qty').textContent=modalQty}
+function konfirmasiModal(){
+  if(!modalBarang) return;
+  const ada=keranjang.find(x=>x.kode===modalBarang.kode);
+  if(ada){ada.qty+=modalQty}else{keranjang.push({...modalBarang,qty:modalQty})}
+  tutupModal(); renderKeranjang();
+}
+document.getElementById('overlay').addEventListener('click',function(e){if(e.target===this)tutupModal()});
+
+// ── KERANJANG ─────────────────────────────────────────────────────────────
+function renderKeranjang(){
+  const el=document.getElementById('keranjang');
+  const total=keranjang.reduce((s,i)=>s+i.qty,0);
+  if(!keranjang.length){
+    el.innerHTML='<div class="empty-cart">Belum ada barang dipilih.<br>Klik barang di kiri untuk menambahkan.</div>';
+    document.getElementById('total-item').textContent='0 item';
+    document.getElementById('btn-print').disabled=true;
+    return;
+  }
+  el.innerHTML=keranjang.map((item,i)=>`
+    <div class="keranjang-item">
+      <div class="ki-info">
+        <div class="ki-nama">${item.nama}</div>
+        <div class="ki-lok">📍 ${item.lokasi} · ${item.kode}</div>
+      </div>
+      <div class="ki-qty">
+        <button class="qty-btn" onclick="ubahQtyKart(${i},-1)">−</button>
+        <span class="qty-num">${item.qty}</span>
+        <button class="qty-btn" onclick="ubahQtyKart(${i},1)">+</button>
+        <span style="font-size:10px;color:#888780;margin-left:2px">${item.satuan}</span>
+      </div>
+      <button class="ki-del" onclick="hapusItem(${i})" title="Hapus">✕</button>
+    </div>
+  `).join('');
+  document.getElementById('total-item').textContent=total+' item ('+keranjang.length+' jenis)';
+  document.getElementById('btn-print').disabled=false;
+}
+function ubahQtyKart(i,d){keranjang[i].qty=Math.max(1,keranjang[i].qty+d);renderKeranjang()}
+function hapusItem(i){keranjang.splice(i,1);renderKeranjang()}
+function resetSemua(){
+  if(!keranjang.length&&!document.getElementById('inp-pemohon').value) return;
+  if(confirm('Bersihkan semua isi keranjang?')){
+    keranjang=[];
+    document.getElementById('inp-pemohon').value='';
+    document.getElementById('inp-dept').value='';
+    document.getElementById('access-log-info').style.display = 'none';
+    renderKeranjang();
+  }
+}
+
+// ── PRINT / SIMPAN TRANSAKSI ──────────────────────────────────────────────
+function buatStrukHTML(trx){
+  const rows=trx.items.map(item=>`
+    <tr><td colspan="3"><b>${item.nama}</b></td></tr>
+    <tr>
+      <td style="color:#666;font-size:11px">${item.kode}</td>
+      <td style="text-align:center">${item.qty} ${item.satuan}</td>
+      <td style="text-align:right;font-weight:600">📍 ${item.lokasi}</td>
+    </tr>
+    <tr><td colspan="3" style="padding-bottom:4px"></td></tr>
+  `).join('');
+  const totalQty=trx.items.reduce((s,i)=>s+i.qty,0);
+  return `
+    <div class="s-center s-bold" style="font-size:14px">GUDANG SPARE PART</div>
+    <div class="s-center" style="font-size:11px;margin-bottom:4px">Struk Pengambilan Barang</div>
+    <div class="s-line"></div>
+    <table>
+      <tr><td>No</td><td>:</td><td><b>${trx.no}</b></td></tr>
+      <tr><td>Tgl</td><td>:</td><td>${trx.tgl} ${trx.jam}</td></tr>
+      <tr><td>Pemohon</td><td>:</td><td>${trx.pemohon}</td></tr>
+      <tr><td>Dept</td><td>:</td><td>${trx.dept}</td></tr>
+    </table>
+    <div class="s-line"></div>
+    <table>${rows}</table>
+    <div class="s-line"></div>
+    <table>
+      <tr><td><b>Total</b></td><td class="s-right"><b>${totalQty} item (${trx.items.length} jenis)</b></td></tr>
+    </table>
+    <div class="s-line"></div>
+    <div class="s-center" style="font-size:10px;margin-top:4px">Admin: ___________________</div>
+    <div class="s-center" style="font-size:10px;margin-top:8px">Penerima: ___________________</div>
+    <div class="s-center" style="font-size:10px;color:#888;margin-top:10px">— Terima kasih —</div>
+  `;
+}
+
+function printStruk(){
+  const pemohon=document.getElementById('inp-pemohon').value.trim()||'—';
+  const dept=document.getElementById('inp-dept').value.trim()||'—';
+  if(!keranjang.length) return;
+  const now=new Date();
+  const tgl=now.toLocaleDateString('id-ID',{day:'2-digit',month:'2-digit',year:'numeric'});
+  const jam=now.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});
+  const no='TRX-'+String(noTrx++).padStart(4,'0');
+  const trx={no,tgl,jam,pemohon,dept,items:keranjang.map(x=>({...x})),timestamp:now.toISOString()};
+
+  // simpan ke history
+  history.unshift(trx);
+
+  // cetak
+  document.getElementById('struk').innerHTML=buatStrukHTML(trx);
+  window.print();
+
+  setTimeout(()=>{
+    keranjang=[];
+    document.getElementById('inp-pemohon').value='';
+    document.getElementById('inp-dept').value='';
+    document.getElementById('access-log-info').style.display = 'none';
+    renderKeranjang();
+    showToast('✅ Transaksi '+no+' tersimpan');
+  },500);
+}
+
+function reprintStruk(idx){
+  const trx=history[idx];
+  if(!trx) return;
+  document.getElementById('struk').innerHTML=buatStrukHTML(trx);
+  window.print();
+}
+
+// ── HISTORY ───────────────────────────────────────────────────────────────
+function renderHistory(){
+  const cari=(document.getElementById('filter-cari').value||'').toLowerCase();
+  const tglFilter=document.getElementById('filter-tgl').value;
+  let filtered=history.filter(t=>{
+    const matchCari=!cari||(t.no.toLowerCase().includes(cari)||t.pemohon.toLowerCase().includes(cari)||t.dept.toLowerCase().includes(cari));
+    const matchTgl=!tglFilter||t.timestamp.startsWith(tglFilter);
+    return matchCari&&matchTgl;
+  });
+
+  const today=new Date().toISOString().slice(0,10);
+  const hariIni=history.filter(t=>t.timestamp.startsWith(today)).length;
+  const totalItem=history.reduce((s,t)=>s+t.items.reduce((ss,i)=>ss+i.qty,0),0);
+  document.getElementById('hs-total').textContent=history.length;
+  document.getElementById('hs-hari').textContent=hariIni;
+  document.getElementById('hs-item').textContent=totalItem;
+
+  const el=document.getElementById('history-list');
+  if(!filtered.length){
+    el.innerHTML='<div class="empty-history">Tidak ada transaksi'+(cari||tglFilter?' yang cocok dengan filter':' hari ini')+'.</div>';
+    return;
+  }
+  el.innerHTML=filtered.map((t,i)=>{
+    const totalQty=t.items.reduce((s,x)=>s+x.qty,0);
+    return `
+    <div class="h-card">
+      <div class="h-card-header" onclick="toggleDetail(${i})">
+        <span class="h-no">${t.no}</span>
+        <div class="h-pemohon">
+          <div class="h-nama">${t.pemohon}</div>
+          <div class="h-dept">${t.dept}</div>
+        </div>
+        <div class="h-meta">
+          <div class="h-tgl">${t.tgl} ${t.jam}</div>
+          <div class="h-total">${totalQty} item · ${t.items.length} jenis</div>
+        </div>
+        <span class="h-chevron" id="chev-${i}">▶</span>
+      </div>
+      <div class="h-detail" id="det-${i}">
+        ${t.items.map(item=>`
+          <div class="h-row">
+            <span class="h-row-kode">${item.kode}</span>
+            <span class="h-row-nama">${item.nama}</span>
+            <span class="h-row-qty">${item.qty} ${item.satuan}</span>
+            <span class="h-row-lok">📍 ${item.lokasi}</span>
+          </div>
+        `).join('')}
+        <button class="btn-reprint" onclick="reprintStruk(${i})">🖨️ Cetak ulang struk ini</button>
+      </div>
+    </div>
+  `}).join('');
+}
+
+function toggleDetail(i){
+  const det=document.getElementById('det-'+i);
+  const chev=document.getElementById('chev-'+i);
+  det.classList.toggle('open');
+  chev.classList.toggle('open');
+}
+
+// ── TAMBAH BARANG ─────────────────────────────────────────────────────────
+function simpanBarang(){
+  const kode=document.getElementById('fb-kode').value.trim().toUpperCase();
+  const nama=document.getElementById('fb-nama').value.trim();
+  const alias=document.getElementById('fb-alias').value.trim();
+  const lok=document.getElementById('fb-lok').value.trim().toUpperCase();
+  const satuan=document.getElementById('fb-satuan').value;
+  const stok=parseInt(document.getElementById('fb-stok').value)||0;
+  if(!kode||!nama||!lok){showToast('⚠️ Kode, nama, dan lokasi wajib diisi');return}
+  if(DB.find(b=>b.kode===kode)){showToast('⚠️ Kode '+kode+' sudah ada');return}
+  
+  DB.push({kode,nama,alias,lokasi:lok,stok,satuan});
+  document.getElementById('fb-kode').value='';
+  document.getElementById('fb-nama').value='';
+  document.getElementById('fb-alias').value='';
+  document.getElementById('fb-lok').value='';
+  document.getElementById('fb-stok').value='0';
+  renderKatalog(DB);
+  renderDaftarBarang();
+  showToast('✅ Barang '+nama+' berhasil ditambahkan');
+}
+
+function hapusBarang(kode){
+  if(!confirm('Hapus barang '+kode+'?')) return;
+  DB=DB.filter(b=>b.kode!==kode);
+  keranjang=keranjang.filter(k=>k.kode!==kode);
+  renderKatalog(DB);
+  renderDaftarBarang();
+  renderKeranjang();
+  showToast('🗑️ Barang dihapus');
+}
+
+function renderDaftarBarang(){
+  const q=(document.getElementById('db-cari').value||'').toLowerCase();
+  const filtered=DB.filter(b=>!q||b.nama.toLowerCase().includes(q)||b.kode.toLowerCase().includes(q)|| (b.alias && b.alias.toLowerCase().includes(q)));
+  const el=document.getElementById('daftar-barang-list');
+  if(!filtered.length){el.innerHTML='<div style="padding:20px;text-align:center;color:#B4B2A9;font-size:13px">Tidak ada barang</div>';return}
+  el.innerHTML=filtered.map(b=>`
+    <div class="db-row">
+      <span class="db-kode">${b.kode}</span>
+      <span><b>${b.nama}</b> ${b.alias ? `<br><span style="font-size:11px; color:#888780;">Alias: ${b.alias}</span>` : ''}</span>
+      <span class="db-lok">${b.lokasi}</span>
+      <span style="font-size:12px;color:#5F5E5A">${b.satuan}</span>
+      <span class="db-stok ${b.stok<=5?'low':''}" style="text-align:right">${b.stok}</span>
+      <button class="db-del" onclick="hapusBarang('${b.kode}')" title="Hapus">🗑️</button>
+    </div>
+  `).join('');
+}
+
+// ── INIT ─────────────────────────────────────────────────────────────────
+renderKatalog(DB);
+renderDaftarBarang();
+</script>
+</body>
+</html>

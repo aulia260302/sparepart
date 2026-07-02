@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistem Integrasi Peran & Kontrol Akses Gudang</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header>
+    <h1>⚙️ Gate System, HR System & Kasir Gudang Spare Part</h1>
+    <div class="header-right">
+      <span id="live-date"></span>
+      <span class="clock" id="live-clock">00:00:00</span>
+    </div>
+  </header>
+
+  <div class="scene active" id="scene-portal">
+    <div class="portal-grid">
+      
+      <div class="portal-card client-card">
+        <div class="portal-icon">🛒</div>
+        <h2>Loket Mandiri Mekanik</h2>
+        <p>Gunakan layar ini di tablet depan untuk melakukan pemesanan mandiri suku cadang.</p>
+        <button class="btn btn-portal" onclick="bukaLayarCustomer()">Buka Loket Pemesanan</button>
+      </div>
+
+      <div class="portal-card admin-card">
+        <div class="portal-icon">🖥️</div>
+        <h2>Dashboard Admin Gudang</h2>
+        <p>Verifikasi live antrean permintaan fisik barang, revisi kuantitas, dan kelola riwayat keluar.</p>
+        <div class="secure-login-box">
+          <input type="password" id="pass-admin" placeholder="Sandi Gudang..." onkeydown="if(event.key==='Enter') authLogin('admin')">
+          <button class="btn btn-admin-go" onclick="authLogin('admin')">Masuk Admin</button>
+        </div>
+      </div>
+
+      <div class="portal-card hr-card">
+        <div class="portal-icon">👥</div>
+        <h2>Dashboard Personalia (HR)</h2>
+        <p>Input data karyawan baru, mapping divisi, sub-divisi, pos kerja, jabatan, dan shift operasional.</p>
+        <div class="secure-login-box">
+          <input type="password" id="pass-hr" placeholder="Sandi Personalia..." onkeydown="if(event.key==='Enter') authLogin('hr')">
+          <button class="btn btn-hr-go" onclick="authLogin('hr')">Masuk HR</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="scene" id="scene-customer">
+    <div class="customer-identity-bar" id="cust-step-identitas">
+      <h3>📋 Autentikasi Pengambil Barang</h3>
+      <div class="form-row">
+        <div class="fg search-select-container">
+          <label>Ketik Nama Karyawan (Sinkronisasi Data HR)</label>
+          <input type="text" id="cust-karyawan-input" autocomplete="off"
+                 placeholder="Ketik nama Anda..." oninput="filterSaranNama(this.value)" onfocus="filterSaranNama(this.value)">
+          <div class="autocomplete-box hidden" id="cust-nama-suggestions"></div>
+        </div>
+        <div class="fg">
+          <label>Divisi Kerja</label>
+          <input type="text" id="cust-lbl-divisi" readonly placeholder="Otomatis dari HR...">
+        </div>
+        <div class="fg">
+          <label>Tujuan Keperluan</label>
+          <select id="cust-tujuan">
+            <option value="Perbaikan (Breakdown)">Perbaikan (Breakdown)</option>
+            <option value="Perawatan (Preventive)">Perawatan (Preventive)</option>
+          </select>
+        </div>
+        <button class="btn btn-next" onclick="kunciIdentitasMekanik()">Lanjut ➡️</button>
+        <button class="btn btn-cancel" onclick="keluarKePortal()">Keluar</button>
+      </div>
+    </div>
+
+    <div class="customer-workspace hidden" id="cust-step-katalog">
+      <div class="katalog-panel">
+        <div class="panel-header-inline">
+          <h3>📦 Katalog Suku Cadang</h3>
+          <input type="text" id="search-bar" placeholder="🔍 Cari nama suku cadang atau alias lapangan (laher, sil)..." oninput="filterKatalogMekanik(this.value)">
+        </div>
+        <div class="katalog-grid" id="katalog-container"></div>
+      </div>
+
+      <div class="checkout-panel">
+        <div class="panel-header-inline flex-between">
+          <h3>📋 Daftar Keranjang</h3>
+          <span class="active-user-tag" id="label-mekanik-aktif">Nama</span>
+        </div>
+        <div class="cart-scroll-box" id="cart-container"></div>
+        <div class="checkout-footer">
+          <button class="btn btn-submit-print" id="btn-print-mekanik" onclick="prosesCetakDanKirimMekanik()" disabled>🖨️ CETAK STRUK & KIRIM</button>
+          <button class="btn btn-back-identitas" onclick="revisiIdentitasMekanik()">⬅️ Ubah Data Identitas</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== MENU ADMIN (PILIH DASHBOARD) ===================== -->
+  <div class="scene" id="scene-admin-menu">
+    <div class="hr-topbar">
+      <h2 class="hr-page-title">🖥️ Dashboard Admin Gudang</h2>
+      <button class="btn btn-logout-admin" onclick="keluarKePortal()">🔒 Logout Admin</button>
+    </div>
+    <div class="admin-menu-grid">
+      <div class="admin-menu-card" onclick="ubahTampilanLayar('scene-katalog')">
+        <div class="admin-menu-icon">📦</div>
+        <h2>Katalog Barang</h2>
+        <p>Kelola master suku cadang: tambah barang baru beserta foto, stok, dan lokasi rak.</p>
+      </div>
+      <div class="admin-menu-card" onclick="ubahTampilanLayar('scene-admin')">
+        <div class="admin-menu-icon">📋</div>
+        <h2>Laporan Antrian Barang</h2>
+        <p>Verifikasi live antrean permintaan mekanik dan kelola riwayat pengeluaran barang.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== DASHBOARD KATALOG BARANG ===================== -->
+  <div class="scene" id="scene-katalog">
+    <div class="hr-topbar">
+      <h2 class="hr-page-title">📦 Katalog Barang</h2>
+      <div class="hr-topbar-actions">
+        <button class="btn btn-back-list" onclick="ubahTampilanLayar('scene-admin-menu')">⬅️ Kembali ke Menu</button>
+        <button class="btn btn-tambah-barang" onclick="bukaFormBarang()">➕ Tambah Barang</button>
+        <button class="btn btn-logout-admin" onclick="keluarKePortal()">🔒 Logout Admin</button>
+      </div>
+    </div>
+    <div class="katalog-admin-box">
+      <div class="panel-header-inline">
+        <input type="text" id="katalog-admin-search" placeholder="🔍 Cari nama, kode, atau alias barang..." oninput="renderKatalogAdmin()">
+      </div>
+      <div class="katalog-grid" id="katalog-admin-container"></div>
+    </div>
+  </div>
+
+  <div class="scene" id="scene-admin">
+    <div class="admin-filter-bar">
+      <div class="filter-group">
+        <label>🔍 Pencarian Universal (Live / History)</label>
+        <input type="text" id="admin-search-input" placeholder="Cari Nama, Suku Cadang, Departemen, Kode Rak..." oninput="renderWorkspaceAdmin()">
+      </div>
+      <div class="filter-group">
+        <label>📅 Filter Kalender</label>
+        <input type="date" id="admin-date-filter" onchange="renderWorkspaceAdmin()">
+      </div>
+      <div class="filter-group button-group">
+        <button class="btn btn-reset-filter" onclick="resetFilterAdmin()">Reset</button>
+        <button class="btn btn-kelola-tujuan" onclick="bukaKelolaTujuan()">🎯 Kelola Tujuan</button>
+        <button class="btn btn-back-list" onclick="ubahTampilanLayar('scene-admin-menu')">⬅️ Menu</button>
+        <button class="btn btn-logout-admin" onclick="keluarKePortal()">🔒 Logout Admin</button>
+      </div>
+    </div>
+
+    <div class="admin-dashboard-layout">
+      <div class="admin-box">
+        <div class="admin-box-header"><h2>📋 Live Antrean Permintaan Masuk (Verifikasi Fisik)</h2></div>
+        <div class="admin-scrollable-area" id="admin-live-orders"></div>
+      </div>
+      <div class="admin-box">
+        <div class="admin-box-header"><h2>📜 Riwayat Selesai & Laporan Pengeluaran Barang</h2></div>
+        <div class="admin-scrollable-area" id="admin-history-done"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="scene" id="scene-hr">
+
+    <!-- ===================== DASHBOARD UTAMA: DAFTAR KARYAWAN ===================== -->
+    <div class="hr-view" id="hr-view-list">
+      <div class="hr-topbar">
+        <h2 class="hr-page-title">👥 Dashboard Karyawan <span id="hr-count-badge" class="hr-count-badge">0</span></h2>
+        <div class="hr-topbar-actions">
+          <button class="btn btn-import-open" onclick="bukaHalamanImport()">📥 Import</button>
+          <button class="btn btn-tambah-open" onclick="bukaFormKaryawan()">➕ Tambah Karyawan</button>
+          <button class="btn btn-logout-admin" onclick="keluarKePortal()">🔒 Logout HR</button>
+        </div>
+      </div>
+
+      <div class="hr-table-box">
+        <div class="hr-box-header">
+          <h2>📋 Database Karyawan Terdaftar</h2>
+          <input type="text" id="hr-search-box" placeholder="🔍 Cari nama atau divisi..." oninput="renderTabelHR()">
+        </div>
+        <div class="hr-table-scroll">
+          <table class="table-hr-render">
+            <thead>
+              <tr>
+                <th>NO</th>
+                <th>DIVISI</th>
+                <th>NAMA</th>
+                <th>JK</th>
+                <th>SUB DIVISI</th>
+                <th>POS</th>
+                <th>JABATAN</th>
+                <th>SHIFT</th>
+                <th>AKSI</th>
+              </tr>
+            </thead>
+            <tbody id="hr-table-body-target"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== HALAMAN BARU: IMPORT EXCEL ===================== -->
+    <div class="hr-view hidden" id="hr-view-import">
+      <div class="hr-topbar">
+        <h2 class="hr-page-title">📥 Dashboard Import Karyawan</h2>
+        <div class="hr-topbar-actions">
+          <button class="btn btn-back-list" onclick="kembaliKeListHR()">⬅️ Kembali ke Daftar</button>
+          <button class="btn btn-logout-admin" onclick="keluarKePortal()">🔒 Logout HR</button>
+        </div>
+      </div>
+
+      <div class="hr-import-box-full">
+        <p class="hr-import-desc">Unggah file <b>.xlsx / .xls / .csv</b>. Baris pertama harus berupa header kolom:</p>
+        <div class="hr-import-cols">DIVISI · NAMA · JK · SUBDIVISI · POS · JABATAN · SHIFT</div>
+
+        <div class="hr-import-actions-col">
+          <button type="button" class="btn btn-download-template" onclick="unduhTemplateExcelHR()">⬇️ Download Template</button>
+          <div class="hr-import-dropzone">
+            <input type="file" id="hr-file-excel" accept=".xlsx,.xls,.csv" onchange="handleFileExcelHR(this)">
+            <label for="hr-file-excel" class="hr-import-label">📄 Klik pilih file untuk upload...</label>
+            <div id="hr-import-filename" class="hr-import-filename"></div>
+          </div>
+        </div>
+
+        <div id="hr-import-preview" class="hr-import-preview"></div>
+        <button type="button" id="btn-proses-import" class="btn btn-save-hr hidden" onclick="prosesImportKaryawanHR()">✅ Simpan Semua ke Database</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== MODAL POP-UP: TAMBAH / EDIT KARYAWAN ===================== -->
+  <div class="modal-overlay hidden" id="hr-form-modal-overlay" onclick="if(event.target===this) tutupFormKaryawan()">
+    <div class="modal-box modal-form-box">
+      <div class="modal-form-header">
+        <div class="modal-form-header-left">
+          <div class="modal-form-avatar" id="hr-form-avatar">➕</div>
+          <div>
+            <h3 id="hr-form-title">Tambah Karyawan</h3>
+            <p class="modal-form-subtitle" id="hr-form-subtitle">Lengkapi data karyawan baru di bawah ini</p>
+          </div>
+        </div>
+        <button type="button" class="modal-close-x" onclick="tutupFormKaryawan()">✕</button>
+      </div>
+
+      <form id="hr-employee-form" onsubmit="event.preventDefault(); simpanKaryawanBaruHR();">
+        <div class="modal-form-body">
+          <div class="fg-hr">
+            <label>👤 NAMA KARYAWAN</label>
+            <input type="text" id="hr-nama" placeholder="Masukkan nama lengkap..." required />
+          </div>
+
+          <div class="form-row-hr">
+            <div class="fg-hr">
+              <label>🏢 DIVISI</label>
+              <select id="hr-divisi" required>
+                <option value="">-- Pilih Divisi --</option>
+                <option value="SPINNING">SPINNING</option>
+                <option value="DENIM">DENIM</option>
+                <option value="UMUM">UMUM</option>
+              </select>
+            </div>
+            <div class="fg-hr">
+              <label>⚧ JENIS KELAMIN</label>
+              <select id="hr-jk" required>
+                <option value="">-- Pilih --</option>
+                <option value="L">L (Laki-laki)</option>
+                <option value="P">P (Perempuan)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row-hr">
+            <div class="fg-hr">
+              <label>🗂️ SUB DIVISI</label>
+              <input type="text" id="hr-subdivisi" placeholder="Cth: TFO, WEAVING, RING..." required />
+            </div>
+            <div class="fg-hr">
+              <label>📍 POS</label>
+              <input type="text" id="hr-pos" placeholder="Cth: MEKANIK, TYING, WINDING..." required />
+            </div>
+          </div>
+
+          <div class="form-row-hr">
+            <div class="fg-hr">
+              <label>💼 JABATAN</label>
+              <input type="text" id="hr-jabatan" placeholder="Cth: OS, STAFF, KABAG..." required />
+            </div>
+            <div class="fg-hr">
+              <label>🕐 SHIFT KERJA</label>
+              <select id="hr-shift" required>
+                <option value="">-- Pilih Shift --</option>
+                <option value="NS">NS (Non Shift)</option>
+                <option value="A">A (Shift A)</option>
+                <option value="B">B (Shift B)</option>
+                <option value="C">C (Shift C)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-form-footer">
+          <button type="button" class="btn btn-modal-cancel" onclick="tutupFormKaryawan()">Batal</button>
+          <button type="submit" id="btn-simpan-hr" class="btn btn-save-hr">💾 Simpan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===================== MODAL: KELOLA TUJUAN KEPERLUAN ===================== -->
+  <div class="modal-overlay hidden" id="tujuan-modal-overlay" onclick="if(event.target===this) tutupKelolaTujuan()">
+    <div class="modal-box modal-form-box">
+      <div class="modal-form-header">
+        <div class="modal-form-header-left">
+          <div class="modal-form-avatar">🎯</div>
+          <div>
+            <h3>Kelola Tujuan Keperluan</h3>
+            <p class="modal-form-subtitle">Daftar tujuan yang tampil di loket mekanik</p>
+          </div>
+        </div>
+        <button type="button" class="modal-close-x" onclick="tutupKelolaTujuan()">✕</button>
+      </div>
+
+      <div class="modal-form-body">
+        <form id="tujuan-form" onsubmit="event.preventDefault(); tambahTujuan();">
+          <div class="fg-hr">
+            <label>➕ TAMBAH TUJUAN BARU</label>
+            <div class="tujuan-input-row">
+              <input type="text" id="tujuan-input" placeholder="Cth: Ganti Oli, Setting Mesin, Cadangan..." required />
+              <button type="submit" id="btn-tujuan-submit" class="btn btn-save-hr">Tambah</button>
+              <button type="button" id="btn-tujuan-batal" class="btn btn-modal-cancel hidden" onclick="batalEditTujuan()">Batal</button>
+            </div>
+          </div>
+        </form>
+        <div id="tujuan-list" class="tujuan-list"></div>
+      </div>
+
+      <div class="modal-form-footer">
+        <button type="button" class="btn btn-modal-cancel" onclick="tutupKelolaTujuan()">Tutup</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== MODAL: TAMBAH BARANG ===================== -->
+  <div class="modal-overlay hidden" id="barang-modal-overlay" onclick="if(event.target===this) tutupFormBarang()">
+    <div class="modal-box modal-form-box">
+      <div class="modal-form-header">
+        <div class="modal-form-header-left">
+          <div class="modal-form-avatar">📦</div>
+          <div>
+            <h3 id="barang-form-title">Tambah Barang</h3>
+            <p class="modal-form-subtitle">Kelola data suku cadang di katalog</p>
+          </div>
+        </div>
+        <button type="button" class="modal-close-x" onclick="tutupFormBarang()">✕</button>
+      </div>
+
+      <form id="barang-form" onsubmit="event.preventDefault(); simpanBarangBaru();">
+        <div class="modal-form-body">
+          <div class="fg-hr">
+            <label>🖼️ GAMBAR BARANG</label>
+            <div class="barang-img-upload">
+              <div class="barang-img-preview" id="barang-img-preview"><span class="card-img-placeholder">📦</span></div>
+              <div class="barang-img-controls">
+                <input type="file" id="barang-file-gambar" accept="image/*" onchange="handleGambarBarang(this)">
+                <label for="barang-file-gambar" class="hr-import-label">📁 Pilih Gambar dari File</label>
+                <button type="button" class="btn btn-modal-cancel" id="btn-hapus-gambar" onclick="hapusGambarBarang()" style="display:none">Hapus Gambar</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-row-hr">
+            <div class="fg-hr">
+              <label>🔖 KODE BARANG</label>
+              <input type="text" id="barang-kode" placeholder="Cth: BRG-006" required />
+            </div>
+            <div class="fg-hr">
+              <label>📦 NAMA BARANG</label>
+              <input type="text" id="barang-nama" placeholder="Cth: Bearing 6301" required />
+            </div>
+          </div>
+
+          <div class="fg-hr">
+            <label>🏷️ ALIAS LAPANGAN (opsional)</label>
+            <input type="text" id="barang-alias" placeholder="Cth: laher, bering, sil..." />
+          </div>
+
+          <div class="form-row-hr">
+            <div class="fg-hr">
+              <label>📍 LOKASI RAK</label>
+              <input type="text" id="barang-lokasi" placeholder="Cth: B2-R" required />
+            </div>
+            <div class="fg-hr">
+              <label>🔢 STOK</label>
+              <input type="number" id="barang-stok" placeholder="0" min="0" required />
+            </div>
+          </div>
+
+          <div class="form-row-hr">
+            <div class="fg-hr">
+              <label>📏 SATUAN</label>
+              <input type="text" id="barang-satuan" placeholder="Cth: pcs, m, kg" required />
+            </div>
+            <div class="fg-hr">
+              <label>📝 DESKRIPSI</label>
+              <input type="text" id="barang-desc" placeholder="Keterangan singkat..." />
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-form-footer">
+          <button type="button" class="btn btn-modal-cancel" onclick="tutupFormBarang()">Batal</button>
+          <button type="submit" id="btn-simpan-barang" class="btn btn-save-hr">💾 Simpan Barang</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===================== MODAL: REVISI PESANAN (GANTI BARANG / QTY) ===================== -->
+  <div class="modal-overlay hidden" id="revisi-modal-overlay" onclick="if(event.target===this) tutupRevisi()">
+    <div class="modal-box modal-form-box">
+      <div class="modal-form-header">
+        <div class="modal-form-header-left">
+          <div class="modal-form-avatar">✏️</div>
+          <div>
+            <h3>Revisi Pesanan</h3>
+            <p class="modal-form-subtitle" id="revisi-subtitle">Ganti barang atau ubah jumlah item</p>
+          </div>
+        </div>
+        <button type="button" class="modal-close-x" onclick="tutupRevisi()">✕</button>
+      </div>
+
+      <div class="modal-form-body">
+        <div id="revisi-items-container"></div>
+        <button type="button" class="btn btn-modal-cancel" style="width:100%; margin-top:6px;" onclick="tambahBarisRevisi()">➕ Tambah Barang Lain</button>
+      </div>
+
+      <div class="modal-form-footer">
+        <button type="button" class="btn btn-modal-cancel" onclick="tutupRevisi()">Batal</button>
+        <button type="button" class="btn btn-save-hr" onclick="simpanRevisi()">💾 Simpan Revisi</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="struk-print"></div>
+
+  <div class="modal-overlay hidden" id="app-modal-overlay">
+    <div class="modal-box">
+      <div class="modal-icon" id="app-modal-icon">ℹ️</div>
+      <h3 class="modal-title" id="app-modal-title"></h3>
+      <p class="modal-message" id="app-modal-message"></p>
+      <input type="text" class="modal-input hidden" id="app-modal-input">
+      <div class="modal-actions" id="app-modal-actions"></div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
